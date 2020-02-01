@@ -1,0 +1,151 @@
+clc;
+close all;
+clear all;
+%% Delete previous files and folders
+if exist('C:\Shubham\ocr', 'dir')
+    rmdir('C:\Shubham\ocr','s');
+end
+if exist('C:\Shubham\devanagriocr', 'dir')
+    rmdir('C:\Shubham\devanagriocr','s');
+end
+%% Read Image
+imagen=imread('test6.png');
+%% Show image
+pause(1)
+figure(1);
+imshow(imagen);
+title('INPUT IMAGE WITH NOISE')
+%% Convert to gray scale
+if size(imagen,3)==3 % RGB image
+  imagen=rgb2gray(imagen);
+  pause(1)
+  imshow(imagen);
+  title('GRAYSCALE IMAGE');
+end
+%% Convert to binary image
+threshold = graythresh(imagen);
+imagen = ~im2bw(imagen,threshold);
+figure
+
+%% Remove all object containing fewer than 30 pixels
+imagen = bwareaopen(imagen,30);
+pause(1)
+
+%% Sentence Segmentation
+rows = sum(imagen,2);
+[rowss,columns] = size(imagen);
+[minval ,minpos] = min(sum(imagen,2));
+k=1;
+for i=1:length(rows)
+    if(minval == sum(imagen(i,:)))
+        segrows(k) = i;
+        k = k+1;
+    end
+end
+f=1;
+for i=1:k-2
+    if(segrows(i+1)-segrows(i)>10)
+        V = imcrop(imagen,[1, segrows(i), columns, segrows(i+1)-segrows(i)]);
+        Resultados1 = ['C:\Shubham\ocr\sentences' num2str(f) '\'];
+        mkdir(Resultados1);
+        pause(1)
+        imshow(V);
+        imwrite(V, fullfile(Resultados1, ['sentence', num2str(1), '.png']));
+        f = f+1;
+    end;
+end;
+sentencedirs = f;
+%% Word Segmentation
+z=0;
+for b=1:sentencedirs
+z= z+1;
+Resultados1 = ['C:\Shubham\ocr\sentences' num2str(b) '\'];
+filePattern = fullfile(Resultados1, '*.png');
+files = dir(filePattern);
+nof = length(files);
+f=1;
+for i= 1:nof
+    imcell=imread(fullfile(Resultados1, ['sentence', num2str(i), '.png']));
+    cols = sum(imcell)
+    [rowss,columns] = size(imcell);
+    [minval ,minpos] = min(sum(imcell));
+    k=1;
+    for j=1:length(cols)
+       if(minval == sum(imcell(:,j)))
+           segcols(k) = j;
+           k = k+1;
+       end
+    end
+    for j=1:k-2
+       if(segcols(j+1)-segcols(j)>10)
+           V = imcrop(imcell,[280, 1, 503, rowss]);
+           pause(1);
+           V = imcrop(imcell,[segcols(j), 1, segcols(j+1)-segcols(j), rowss]);
+           Resultados1 = ['C:\Shubham\ocr\sentences' num2str(b) '\words' num2str(f) '\'];
+           mkdir(Resultados1);
+           worddir(z) = f; 
+           pause(1)
+           imshow(V);
+           imwrite(V, fullfile(Resultados1, ['words', num2str(1), '.png']));
+           f= f+1;
+    end;
+end;
+end;
+end;
+
+%%Remove Shirolekha and segment the characters
+for b=1:sentencedirs
+    for c=1:worddir(b)
+        Resultados1 = ['C:\Shubham\ocr\sentences' num2str(b) '\words' num2str(c)];
+        filePattern = fullfile(Resultados1, '*.png');
+        files = dir(filePattern);
+        nof = length(files);
+        f=1;
+        for i= 1:nof
+          imcell=imread(fullfile(Resultados1, ['words', num2str(i), '.png']));
+          pause(1)
+          imshow(imcell);
+          imcellx = imcell;
+          imcell= bwmorph(imcell, 'skel', inf);
+          rowws = sum(imcell,2);
+          [rowss,columns] = size(imcell);
+          [minval ,minpos] = max(sum(imcell,2));
+          X =  zeros(1,columns,'uint8');
+          imcell(minpos,:) = X;
+          colls = sum(imcell);
+          [minval ,minpos] = min(sum(imcell));
+          k=1;
+          for j=1:length(colls)
+             if(minval == sum(imcell(:,j)))
+                segcolls(k) = j;
+                k = k+1;
+             end
+          end
+          u=1;
+       for j=1:k-2
+          if(segcolls(j+1)-segcolls(j)>10)
+              V = imcrop(imcell,[280, 1, 503, rowss]);
+              pause(1);
+              V = imcrop(imcellx,[segcolls(j), 1, segcolls(j+1)-segcolls(j), rowss]);
+              V = padarray(V,[5 5],'both');
+              Resultados1 = ['C:\Shubham\ocr\sentences' num2str(b) '\words' num2str(c) '\letters' num2str(f)];
+              mkdir(Resultados1);
+              worddir(z) = f; 
+              V = imresize(V,[32 32]);
+              V = bwareaopen(V,30);
+              V= bwmorph(V, 'skel', inf);
+              pause(1)
+              imshow(V);
+              imwrite(V, fullfile(Resultados1, ['letters', num2str(1), '.png']));
+              resultados1 = ['C:\Shubham\devanagriocr'];
+              mkdir(resultados1);
+              imwrite(V, fullfile(resultados1, [num2str(b),num2str(c),num2str(u), '.png']));
+              f= f+1;
+              u= u+1;
+       end;
+   end;
+end;
+end;
+end;
+
+        
